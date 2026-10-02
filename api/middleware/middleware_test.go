@@ -5,7 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/Raoon-Soluciones/bpmn-ai/internal/observability"
+	"github.com/Raoon-Tech/bpmn-ai/internal/observability"
 )
 
 func TestRequestLogger(t *testing.T) {

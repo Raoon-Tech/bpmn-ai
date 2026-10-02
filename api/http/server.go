@@ -11,11 +11,11 @@ import (
 	cors "github.com/go-chi/cors"
 	"golang.org/x/time/rate"
 
-	"github.com/Raoon-Soluciones/bpmn-ai/api/middleware"
-	"github.com/Raoon-Soluciones/bpmn-ai/internal/engine"
-	"github.com/Raoon-Soluciones/bpmn-ai/internal/observability"
-	"github.com/Raoon-Soluciones/bpmn-ai/internal/queue"
-	"github.com/Raoon-Soluciones/bpmn-ai/pkg/store"
+	"github.com/Raoon-Tech/bpmn-ai/api/middleware"
+	"github.com/Raoon-Tech/bpmn-ai/internal/engine"
+	"github.com/Raoon-Tech/bpmn-ai/internal/observability"
+	"github.com/Raoon-Tech/bpmn-ai/internal/queue"
+	"github.com/Raoon-Tech/bpmn-ai/pkg/store"
 )
 
 // ServerConfig holds HTTP server configuration.

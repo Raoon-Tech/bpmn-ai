@@ -3,8 +3,8 @@ package process
 import (
 	"testing"
 
-	"github.com/Raoon-Soluciones/bpmn-ai/pkg/bpmn"
-	"github.com/Raoon-Soluciones/bpmn-ai/pkg/store"
+	"github.com/Raoon-Tech/bpmn-ai/pkg/bpmn"
+	"github.com/Raoon-Tech/bpmn-ai/pkg/store"
 )
 
 func TestIsValidTransition(t *testing.T) {

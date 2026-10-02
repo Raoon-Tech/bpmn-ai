@@ -1,6 +1,6 @@
 package element
 
-import "github.com/Raoon-Soluciones/bpmn-ai/pkg/bpmn"
+import "github.com/Raoon-Tech/bpmn-ai/pkg/bpmn"
 
 // Activity represents a BPMN activity (task).
 type Activity interface {

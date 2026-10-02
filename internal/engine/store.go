@@ -3,8 +3,8 @@ package engine
 import (
 	"context"
 
-	"github.com/Raoon-Soluciones/bpmn-ai/pkg/bpmn"
-	"github.com/Raoon-Soluciones/bpmn-ai/pkg/store"
+	"github.com/Raoon-Tech/bpmn-ai/pkg/bpmn"
+	"github.com/Raoon-Tech/bpmn-ai/pkg/store"
 )
 
 // EngineStore is the persistence interface required by the BPMN execution engine.

@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Raoon-Soluciones/bpmn-ai/internal/element"
-	"github.com/Raoon-Soluciones/bpmn-ai/pkg/bpmn"
-	"github.com/Raoon-Soluciones/bpmn-ai/pkg/store"
+	"github.com/Raoon-Tech/bpmn-ai/internal/element"
+	"github.com/Raoon-Tech/bpmn-ai/pkg/bpmn"
+	"github.com/Raoon-Tech/bpmn-ai/pkg/store"
 )
 
 type ErrorEndEvent struct {

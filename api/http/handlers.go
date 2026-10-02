@@ -8,10 +8,10 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
-	"github.com/Raoon-Soluciones/bpmn-ai/api/middleware"
-	"github.com/Raoon-Soluciones/bpmn-ai/internal/process"
-	"github.com/Raoon-Soluciones/bpmn-ai/pkg/bpmn"
-	"github.com/Raoon-Soluciones/bpmn-ai/pkg/store"
+	"github.com/Raoon-Tech/bpmn-ai/api/middleware"
+	"github.com/Raoon-Tech/bpmn-ai/internal/process"
+	"github.com/Raoon-Tech/bpmn-ai/pkg/bpmn"
+	"github.com/Raoon-Tech/bpmn-ai/pkg/store"
 )
 
 const bpmnParseTimeout = 30 * time.Second

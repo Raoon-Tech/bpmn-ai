@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/Raoon-Soluciones/bpmn-ai/internal/element"
-	"github.com/Raoon-Soluciones/bpmn-ai/pkg/bpmn"
+	"github.com/Raoon-Tech/bpmn-ai/internal/element"
+	"github.com/Raoon-Tech/bpmn-ai/pkg/bpmn"
 )
 
 // ElementConstructor is a function that creates an element from a BPMN definition.

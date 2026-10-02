@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"runtime/debug"
 
-	"github.com/Raoon-Soluciones/bpmn-ai/internal/observability"
+	"github.com/Raoon-Tech/bpmn-ai/internal/observability"
 )
 
 // Recovery recovers from panics and returns a 500 error.

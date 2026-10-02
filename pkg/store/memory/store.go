@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/Raoon-Soluciones/bpmn-ai/pkg/bpmn"
-	"github.com/Raoon-Soluciones/bpmn-ai/pkg/store"
+	"github.com/Raoon-Tech/bpmn-ai/pkg/bpmn"
+	"github.com/Raoon-Tech/bpmn-ai/pkg/store"
 )
 
 // Store is an in-memory implementation of store.Store for testing.

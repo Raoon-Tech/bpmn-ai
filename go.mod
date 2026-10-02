@@ -1,4 +1,4 @@
-module github.com/Raoon-Soluciones/bpmn-ai
+module github.com/Raoon-Tech/bpmn-ai
 
 go 1.26.0
 

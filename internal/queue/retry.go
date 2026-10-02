@@ -7,7 +7,7 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/Raoon-Soluciones/bpmn-ai/pkg/store"
+	"github.com/Raoon-Tech/bpmn-ai/pkg/store"
 )
 
 // RetryPolicy defines how failed jobs are retried.

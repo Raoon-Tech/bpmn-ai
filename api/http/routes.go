@@ -2,8 +2,8 @@ package http
 
 import (
 	"github.com/go-chi/chi/v5"
-	"github.com/Raoon-Soluciones/bpmn-ai/api/middleware"
-	"github.com/Raoon-Soluciones/bpmn-ai/internal/observability"
+	"github.com/Raoon-Tech/bpmn-ai/api/middleware"
+	"github.com/Raoon-Tech/bpmn-ai/internal/observability"
 )
 
 func (s *Server) routes() {

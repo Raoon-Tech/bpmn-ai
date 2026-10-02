@@ -1,6 +1,6 @@
 package element
 
-import "github.com/Raoon-Soluciones/bpmn-ai/pkg/bpmn"
+import "github.com/Raoon-Tech/bpmn-ai/pkg/bpmn"
 
 // Event represents a BPMN event.
 type Event interface {

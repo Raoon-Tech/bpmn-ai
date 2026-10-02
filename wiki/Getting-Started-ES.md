@@ -13,7 +13,7 @@
 ## Instalación
 
 ```bash
-git clone https://github.com/Raoon-Soluciones/bpmn-ai.git
+git clone https://github.com/Raoon-Tech/bpmn-ai.git
 cd bpmn-ai
 go mod download
 go build ./cmd/engine/

@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/Raoon-Soluciones/bpmn-ai/pkg/bpmn"
+	"github.com/Raoon-Tech/bpmn-ai/pkg/bpmn"
 )
 
 // FlowStatus represents the status of a flow execution.

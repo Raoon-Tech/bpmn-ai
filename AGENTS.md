@@ -2,7 +2,7 @@
 
 ## What this is
 
-Standalone BPMN 2.0 execution engine written in Go. High-performance, production-ready. Module path: `github.com/Raoon-Soluciones/bpmn-ai`.
+Standalone BPMN 2.0 execution engine written in Go. High-performance, production-ready. Module path: `github.com/Raoon-Tech/bpmn-ai`.
 
 ## Project structure
 

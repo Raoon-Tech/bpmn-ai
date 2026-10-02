@@ -3,7 +3,7 @@ package queue
 import (
 	"context"
 
-	"github.com/Raoon-Soluciones/bpmn-ai/pkg/store"
+	"github.com/Raoon-Tech/bpmn-ai/pkg/store"
 )
 
 // JobStore is the persistence interface for job operations.
