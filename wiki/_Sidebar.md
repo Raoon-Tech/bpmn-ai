@@ -10,6 +10,7 @@
 - [Sub-Process & CallActivity](Architecture.md#sub-process--call-activity) — Subprocesos
 - [Boundary Events](Architecture.md#boundary-events) — Eventos de borde
 - [Job Queue](Architecture.md#job-queue) — Cola de trabajos
+- [Persistence & ORM](../docs/persistence.md) — Persistencia y ORM
 
 #### 🧩 BPMN Elements / Elementos BPMN
 - [Events](BPMN-Elements.md#events-internalelementevents) — Eventos
@@ -32,6 +33,9 @@
 - [Case Management](API-Reference.md#case-management) — Casos
 - [Task Operations](API-Reference.md#task-operations) — Tareas
 - [Messages & Signals](API-Reference.md#message-correlation) — Mensajes y señales
+
+#### 🛠️ CLI / Línea de comandos
+- [CLI Reference](CLI-Reference.md) — Referencia CLI
 
 ---
 

@@ -9,13 +9,18 @@ Standalone BPMN 2.0 execution engine written in Go. High-performance, production
 | Directory | Purpose |
 |---|---|
 | `cmd/engine/` | CLI entry point — wires deps, starts HTTP server, graceful shutdown |
+| `internal/cli/` | Command line interface — serve, migrate, db, config, doctor, version |
+| `internal/bootstrap/` | Shared persistence wiring (ORM backend) |
 | `internal/engine/` | Core execution engine — iterative loop, flow router, fail-safe manager, element registry |
 | `internal/element/` | BPMN element implementations — events, gateways, activities, flows |
 | `internal/process/` | Process & thread management — state machine, instance lifecycle |
 | `internal/queue/` | Job queue system — worker pool, retry policy, dead letter queue |
 | `internal/observability/` | Logging, metrics, events — slog, Prometheus, event dispatcher |
 | `pkg/bpmn/` | BPMN model types & XML parser |
-| `pkg/store/` | Persistence interface + in-memory implementation (testing) |
+| `pkg/store/` | Persistence interface + memory implementation (testing) |
+| `pkg/store/orm/` | ORM-backed store (GORM) — postgres, mysql, sqlite |
+| `pkg/store/migrate/` | Versioned migration runner |
+| `pkg/store/migrations/` | Versioned migration files (Go) |
 | `api/http/` | REST API with chi router — handlers, routes, health checks |
 | `api/middleware/` | HTTP middleware — logging, recovery, request ID, rate limiter, CSRF |
 | `config/` | Configuration system |
@@ -70,7 +75,7 @@ CREATED → IN_PROGRESS → COMPLETED
 ## Conventions
 
 - **Go 1.26+** — use modern patterns, no external DI framework (factory functions)
-- **No ORM** — explicit queries via `pkg/store` interface (pgx for PostgreSQL, in-memory for tests)
+- **ORM store** — `pkg/store/orm` (GORM) implements `pkg/store.Store` for postgres, mysql and sqlite; `memory` remains for tests. No hand-written SQL in application code
 - **chi router** — idiomatic HTTP routing, no reflection overhead
 - **slog** — structured logging from stdlib, no external logger dependency
 - **Prometheus** — official `client_golang` for metrics
@@ -125,7 +130,11 @@ Engine is configured via `config/` package with YAML + environment variables. Ke
 - ServiceTask uses `ActionQueue` — routes to async job queue, process continues without waiting for completion.
 - UserTask uses `ActionForm` — instance transitions to `WAITING` state until task is completed externally.
 - ParallelGateway creates new threads for each branch — thread index formula: `parentThreadIdx * 10 + branchIndex + 1`.
-- The in-memory store (`pkg/store/memory/`) is for testing only — production uses PostgreSQL via `pkg/store/sql/`.
+- The in-memory store (`pkg/store/memory/`) is for testing only — production uses the ORM store (`pkg/store/orm/`) selected by `DB_DRIVER`.
+- **Migrations**: `migrate up` applies versioned Go migrations in `pkg/store/migrations/`; `DB_AUTO_MIGRATE=true` (default) runs them on boot. `migrate create` scaffolds a file that must be rebuilt into the binary before use.
+- **AutoMigrate vs versioned**: AutoMigrate only adds columns/tables; renames or drops need an explicit migration.
+- **SQLite**: pure-Go driver (no cgo), single writer (`MaxOpenConns=1`), WAL + busy timeout enabled. Not recommended for multi-instance deployments.
+- **Fail-fast**: a configured database that cannot be reached aborts startup — there is no silent fallback to memory.
 - **Sub-Process**: Inner XML parsed via `xml:",innerxml"`, elements flattened with `{subID}.{origID}` prefix. Synthetic entry flow `{id}_sp_entry` routes into the sub-process. Exit routing via `subprocess_exit_flows` on the internal end event's ExtensionData.
 - **Error Events**: `ErrorEndEvent` returns `ActionThrowError`. Engine searches for matching `ErrorCatchEvent` via `AttachedToRef` on parent sub-process. `parentSubProcessID()` extracts parent from element ID prefix (e.g., `sp-1.error-end-1` → `sp-1`).
 - **Boundary Events**: `scheduleBoundaryTimers()` creates flow records + timer jobs when an activity enters WAITING. Also creates active flow records for message catch boundaries (found by `SendMessage()`). Interrupting boundaries cancel attached activity flows via `cancelAttachedFlows()`. Non-interrupting (`cancelActivity="false"`) fire without cancellation. Error boundaries on sub-processes and activities found by `findErrorCatch()` (searches by `AttachedToRef` + error code match).

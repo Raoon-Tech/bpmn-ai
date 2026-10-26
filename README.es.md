@@ -60,7 +60,7 @@ curl http://localhost:8080/api/v1/cases/{caseID}
 │  Prometheus · Dispatcher Eventos · slog · Auditoría          │
 ├─────────────────────────────────────────────────────────────┤
 │                     Capa Persistencia                         │
-│  PostgreSQL (pgx/v5) · En Memoria (tests) · Cola Trabajos   │
+│  PostgreSQL/MySQL/SQLite (GORM) · En Memoria (tests) · Cola Trabajos │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -194,6 +194,44 @@ bpmn-ai/
 | Docker Compose | `docker-compose up -d` |
 
 ---
+
+## Base de datos y migraciones
+
+El motor persiste con un store ORM (GORM) que soporta **PostgreSQL, MySQL y SQLite**.
+
+```bash
+# SQLite, sin infraestructura
+DB_DRIVER=sqlite go run ./cmd/engine
+
+# PostgreSQL con Docker
+docker compose up -d db
+go run ./cmd/engine
+```
+
+Variables principales: `DB_DRIVER`, `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `DB_FILE` (sqlite), `DATABASE_URL` (override), `DB_AUTO_MIGRATE`. Detalle en [docs/persistencia.md](docs/persistencia.md).
+
+### Migraciones
+
+```bash
+bpmn-ai migrate status
+bpmn-ai migrate up --dry-run
+bpmn-ai migrate up
+bpmn-ai migrate create add_priority_to_jobs
+```
+
+Ver [docs/migraciones.md](docs/migraciones.md).
+
+### CLI
+
+```bash
+bpmn-ai doctor          # diagnostico
+bpmn-ai config show     # configuracion efectiva
+bpmn-ai db ping         # conexion a la BD
+bpmn-ai db stats        # filas por tabla
+bpmn-ai db seed x.bpmn  # desplegar un proceso
+```
+
+Ver [docs/cli-es.md](docs/cli-es.md).
 
 ## Configuración (`.env`)
 

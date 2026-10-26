@@ -16,6 +16,15 @@ coverage.html
 *.swp
 *.swo
 
+# Environment variables (never bake secrets into the image)
+.env
+.env.*
+!.env.example
+
+# Git metadata
+.git
+.gitignore
+
 # OS
 .DS_Store
 Thumbs.db

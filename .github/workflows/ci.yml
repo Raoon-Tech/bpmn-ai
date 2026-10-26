@@ -32,6 +32,8 @@ jobs:
         run: go mod download
 
       - name: Run unit tests
+        env:
+          TEST_POSTGRES_DSN: postgres://postgres:secret@localhost:5432/bpmn_test?sslmode=disable
         run: go test -race -count=1 ./internal/... ./pkg/... ./api/... ./config/...
 
       - name: Run tests with coverage

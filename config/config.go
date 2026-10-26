@@ -4,17 +4,18 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
 // Config holds the engine configuration.
 type Config struct {
-	Server      ServerConfig
-	Database    DatabaseConfig
-	Engine      EngineConfig
-	AI          AIConfig
-	Log         LogConfig
-	Audit       AuditConfig
+	Server   ServerConfig
+	Database DatabaseConfig
+	Engine   EngineConfig
+	AI       AIConfig
+	Log      LogConfig
+	Audit    AuditConfig
 }
 
 // ServerConfig holds HTTP server configuration.
@@ -27,14 +28,38 @@ type ServerConfig struct {
 	AllowedOrigins []string
 	TLSCertFile    string
 	TLSKeyFile     string
+	DisableCSRF    bool
 }
 
-// DatabaseConfig holds database connection configuration.
+// Database driver names accepted by DatabaseConfig.Driver.
+const (
+	DBDriverMemory   = "memory"
+	DBDriverPostgres = "postgres"
+	DBDriverMySQL    = "mysql"
+	DBDriverSQLite   = "sqlite"
+)
+
+// DatabaseConfig holds database connection and migration configuration.
+//
+// The driver is selected with DB_DRIVER. A complete DATABASE_URL can be used
+// instead of the individual DB_* fields; when both are present the URL wins and
+// the driver is taken from DB_DRIVER (or inferred from the URL scheme).
 type DatabaseConfig struct {
-	URL         string
-	MaxConns    int
-	MinConns    int
-	MaxIdleTime time.Duration
+	Driver           string
+	URL              string
+	Host             string
+	Port             int
+	User             string
+	Password         string
+	Name             string
+	SSLMode          string
+	File             string // SQLite database file
+	AutoMigrate      bool
+	AllowDestructive bool
+	MaxConns         int
+	MinConns         int
+	MaxIdleTime      time.Duration
+	LogLevel         string // silent, error, warn, info
 }
 
 // EngineConfig holds BPMN engine configuration.
@@ -91,25 +116,52 @@ type AuditConfig struct {
 
 // Default returns a configuration with sensible defaults.
 func Default() Config {
-	dbURL := os.Getenv("DATABASE_URL")
-	if dbURL == "" {
-		dbURL = "postgres://postgres:postgres@localhost:5432/bpmn?sslmode=disable"
+	dbURL := strings.TrimSpace(os.Getenv("DATABASE_URL"))
+	dbDriver := strings.ToLower(strings.TrimSpace(os.Getenv("DB_DRIVER")))
+	if dbDriver == "" {
+		if dbURL != "" {
+			dbDriver = inferDriver(dbURL)
+		} else {
+			dbDriver = DBDriverPostgres
+		}
 	}
+
+	dbPort := parseEnvInt("DB_PORT", 0)
+	if dbPort == 0 {
+		dbPort = defaultPort(dbDriver)
+	}
+
+	dbUser := envOrDefault("DB_USER", defaultUser(dbDriver))
+	dbName := envOrDefault("DB_NAME", "bpmn")
+	dbSSLMode := envOrDefault("DB_SSLMODE", "disable")
+	dbFile := envOrDefault("DB_FILE", "./data/bpmn.db")
 
 	return Config{
 		Server: ServerConfig{
-			Host:             "0.0.0.0",
-			Port:             8080,
-			ReadTimeout:      15 * time.Second,
-			WriteTimeout:     30 * time.Second,
-			MaxBodySize:      10 << 20, // 10MB
-			AllowedOrigins:   []string{"https://localhost:3000"},
+			Host:           envOrDefault("SERVER_HOST", "0.0.0.0"),
+			Port:           parseEnvInt("SERVER_PORT", 8080),
+			ReadTimeout:    parseEnvDuration("SERVER_READ_TIMEOUT", 15*time.Second),
+			WriteTimeout:   parseEnvDuration("SERVER_WRITE_TIMEOUT", 30*time.Second),
+			MaxBodySize:    10 << 20, // 10MB
+			AllowedOrigins: []string{"https://localhost:3000"},
+			DisableCSRF:    parseBoolEnv("SERVER_DISABLE_CSRF", false),
 		},
 		Database: DatabaseConfig{
-			URL:         dbURL,
-			MaxConns:    25,
-			MinConns:    5,
-			MaxIdleTime: 30 * time.Minute,
+			Driver:           dbDriver,
+			URL:              dbURL,
+			Host:             envOrDefault("DB_HOST", "localhost"),
+			Port:             dbPort,
+			User:             dbUser,
+			Password:         os.Getenv("DB_PASSWORD"),
+			Name:             dbName,
+			SSLMode:          dbSSLMode,
+			File:             dbFile,
+			AutoMigrate:      parseBoolEnv("DB_AUTO_MIGRATE", true),
+			AllowDestructive: parseBoolEnv("DB_ALLOW_DESTRUCTIVE", false),
+			MaxConns:         parseEnvInt("DB_POOL_MAX", 25),
+			MinConns:         parseEnvInt("DB_POOL_MIN", 5),
+			MaxIdleTime:      parseEnvDuration("DB_MAX_IDLE_TIME", 30*time.Minute),
+			LogLevel:         strings.ToLower(envOrDefault("DB_LOG_LEVEL", "warn")),
 		},
 		Engine: EngineConfig{
 			WorkerCount:       4,
@@ -137,8 +189,8 @@ func Default() Config {
 			},
 		},
 		Log: LogConfig{
-			Level:  "info",
-			Format: "json",
+			Level:  envOrDefault("LOG_LEVEL", "info"),
+			Format: envOrDefault("LOG_FORMAT", "json"),
 		},
 		Audit: AuditConfig{
 			Enabled: parseBoolEnv("AUDIT_LOG_ENABLED", true),
@@ -203,6 +255,43 @@ func envOrDefault(key, defaultVal string) string {
 	return val
 }
 
+// inferDriver derives the database driver from a DSN scheme.
+func inferDriver(dsn string) string {
+	lower := strings.ToLower(dsn)
+	switch {
+	case strings.HasPrefix(lower, "postgres://"), strings.HasPrefix(lower, "postgresql://"):
+		return DBDriverPostgres
+	case strings.HasPrefix(lower, "mysql://"):
+		return DBDriverMySQL
+	case strings.HasPrefix(lower, "sqlite://"), strings.HasPrefix(lower, "file:"), strings.HasSuffix(lower, ".db"), strings.HasSuffix(lower, ".sqlite"):
+		return DBDriverSQLite
+	default:
+		return DBDriverPostgres
+	}
+}
+
+func defaultPort(driver string) int {
+	switch driver {
+	case DBDriverMySQL:
+		return 3306
+	case DBDriverSQLite, DBDriverMemory:
+		return 0
+	default:
+		return 5432
+	}
+}
+
+func defaultUser(driver string) string {
+	switch driver {
+	case DBDriverMySQL:
+		return "root"
+	case DBDriverMemory, DBDriverSQLite:
+		return ""
+	default:
+		return "postgres"
+	}
+}
+
 // Validate checks the configuration for errors.
 func (c Config) Validate() error {
 	if c.Server.Port < 1 || c.Server.Port > 65535 {
@@ -222,6 +311,51 @@ func (c Config) Validate() error {
 	}
 	if (c.Server.TLSCertFile == "") != (c.Server.TLSKeyFile == "") {
 		return fmt.Errorf("both TLSCertFile and TLSKeyFile must be provided for TLS")
+	}
+	if err := c.Database.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+// Validate checks the database configuration for errors.
+func (d DatabaseConfig) Validate() error {
+	switch d.Driver {
+	case DBDriverMemory:
+		return nil
+	case DBDriverPostgres, DBDriverMySQL, DBDriverSQLite:
+	default:
+		return fmt.Errorf("unsupported DB_DRIVER %q (expected memory, postgres, mysql or sqlite)", d.Driver)
+	}
+
+	if d.URL == "" {
+		if d.Driver == DBDriverSQLite {
+			if strings.TrimSpace(d.File) == "" {
+				return fmt.Errorf("DB_FILE must be set when DB_DRIVER=sqlite")
+			}
+		} else {
+			if strings.TrimSpace(d.Host) == "" {
+				return fmt.Errorf("DB_HOST must not be empty when DB_DRIVER=%s", d.Driver)
+			}
+			if d.Port < 1 || d.Port > 65535 {
+				return fmt.Errorf("DB_PORT must be between 1 and 65535 when DB_DRIVER=%s", d.Driver)
+			}
+			if strings.TrimSpace(d.Name) == "" {
+				return fmt.Errorf("DB_NAME must not be empty when DB_DRIVER=%s", d.Driver)
+			}
+		}
+	}
+
+	if d.MaxConns < 1 {
+		return fmt.Errorf("DB_POOL_MAX must be at least 1")
+	}
+	if d.MinConns < 0 || d.MinConns > d.MaxConns {
+		return fmt.Errorf("DB_POOL_MIN must be between 0 and DB_POOL_MAX")
+	}
+	switch d.LogLevel {
+	case "", "silent", "error", "warn", "info":
+	default:
+		return fmt.Errorf("unsupported DB_LOG_LEVEL %q (expected silent, error, warn or info)", d.LogLevel)
 	}
 	return nil
 }
