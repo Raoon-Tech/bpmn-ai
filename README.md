@@ -235,6 +235,14 @@ bpmn-ai db seed x.bpmn  # deploy a process
 
 See [docs/cli.md](docs/cli.md).
 
+## Authentication, multi-tenant and webhooks
+
+The engine **does not manage users or roles**. Identity is delegated to the host via `AUTH_MODE=none|jwt|gateway` (see [docs/auth.md](docs/auth.md)). Each instance can be associated with a tenant (`tenant_id`). Events can be pushed to an external host via signed webhooks (see [docs/webhooks.md](docs/webhooks.md)).
+
+## gRPC
+
+The engine can also expose a gRPC server (`GRPC_ENABLED=true`, `GRPC_PORT=9090`). See [docs/grpc.md](docs/grpc.md).
+
 ## Configuration (`.env`)
 
 ```bash

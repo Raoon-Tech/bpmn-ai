@@ -22,6 +22,7 @@ type WorkerPool struct {
 	concurrency int
 	pollInterval time.Duration
 	stopCh      chan struct{}
+	stopOnce    sync.Once
 	wg         sync.WaitGroup
 	dispatcher *observability.Dispatcher
 }
@@ -62,9 +63,12 @@ func (wp *WorkerPool) Start(ctx context.Context) {
 	}
 }
 
-// Stop signals all workers to shut down and waits for them to finish.
+// Stop signals all workers to shut down and waits for them to finish. It is
+// safe to call more than once.
 func (wp *WorkerPool) Stop() {
-	close(wp.stopCh)
+	wp.stopOnce.Do(func() {
+		close(wp.stopCh)
+	})
 	wp.wg.Wait()
 }
 
@@ -102,6 +106,43 @@ func (wp *WorkerPool) processBatch(ctx context.Context) {
 			wp.processJob(ctx, job)
 		}
 	}
+}
+
+// Drain processes up to limit pending jobs synchronously and returns the number
+// of jobs handled. It is intended for one-off execution (CLI, cron, CI) where
+// the background worker pool is not running.
+func (wp *WorkerPool) Drain(ctx context.Context, limit int) (int, error) {
+	if limit <= 0 {
+		limit = 100
+	}
+	processed := 0
+	for processed < limit {
+		if err := ctx.Err(); err != nil {
+			return processed, err
+		}
+		batch := wp.concurrency
+		if remaining := limit - processed; remaining < batch {
+			batch = remaining
+		}
+		if batch < 1 {
+			batch = 1
+		}
+		jobs, err := wp.store.GetPendingJobs(ctx, batch)
+		if err != nil {
+			return processed, err
+		}
+		if len(jobs) == 0 {
+			break
+		}
+		for _, job := range jobs {
+			if processed >= limit {
+				break
+			}
+			wp.processJob(ctx, job)
+			processed++
+		}
+	}
+	return processed, nil
 }
 
 func (wp *WorkerPool) processJob(ctx context.Context, job *store.JobRecord) {

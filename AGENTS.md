@@ -22,6 +22,7 @@ Standalone BPMN 2.0 execution engine written in Go. High-performance, production
 | `pkg/store/migrate/` | Versioned migration runner |
 | `pkg/store/migrations/` | Versioned migration files (Go) |
 | `api/http/` | REST API with chi router — handlers, routes, health checks |
+| `api/grpc/` | gRPC server + proto definition |
 | `api/middleware/` | HTTP middleware — logging, recovery, request ID, rate limiter, CSRF |
 | `config/` | Configuration system |
 | `testdata/` | BPMN test files |
@@ -135,6 +136,9 @@ Engine is configured via `config/` package with YAML + environment variables. Ke
 - **AutoMigrate vs versioned**: AutoMigrate only adds columns/tables; renames or drops need an explicit migration.
 - **SQLite**: pure-Go driver (no cgo), single writer (`MaxOpenConns=1`), WAL + busy timeout enabled. Not recommended for multi-instance deployments.
 - **Fail-fast**: a configured database that cannot be reached aborts startup — there is no silent fallback to memory.
+- **Auth**: the engine does not manage users or roles. Identity is resolved by `AUTH_MODE` (none/jwt/gateway) and injected into the request context. JWT validation uses `AUTH_JWKS_URL`.
+- **Multi-tenant**: `tenant_id` column on instances; filtering is context-based via `store.WithTenant`. Empty tenant = global.
+- **Webhooks**: enabled with `WEBHOOK_URL`; HMAC-signed, 5 retries with exponential backoff.
 - **Sub-Process**: Inner XML parsed via `xml:",innerxml"`, elements flattened with `{subID}.{origID}` prefix. Synthetic entry flow `{id}_sp_entry` routes into the sub-process. Exit routing via `subprocess_exit_flows` on the internal end event's ExtensionData.
 - **Error Events**: `ErrorEndEvent` returns `ActionThrowError`. Engine searches for matching `ErrorCatchEvent` via `AttachedToRef` on parent sub-process. `parentSubProcessID()` extracts parent from element ID prefix (e.g., `sp-1.error-end-1` → `sp-1`).
 - **Boundary Events**: `scheduleBoundaryTimers()` creates flow records + timer jobs when an activity enters WAITING. Also creates active flow records for message catch boundaries (found by `SendMessage()`). Interrupting boundaries cancel attached activity flows via `cancelAttachedFlows()`. Non-interrupting (`cancelActivity="false"`) fire without cancellation. Error boundaries on sub-processes and activities found by `findErrorCatch()` (searches by `AttachedToRef` + error code match).

@@ -233,6 +233,14 @@ bpmn-ai db seed x.bpmn  # desplegar un proceso
 
 Ver [docs/cli-es.md](docs/cli-es.md).
 
+## Autenticación, multi-tenant y webhooks
+
+El motor **no gestiona usuarios ni roles**. La identidad se delega al host mediante `AUTH_MODE=none|jwt|gateway` (ver [docs/auth-es.md](docs/auth-es.md)). Cada instancia puede asociarse a un tenant (`tenant_id`). Los eventos se pueden notificar a un host externo mediante webhooks firmados (ver [docs/webhooks.md](docs/webhooks.md)).
+
+## gRPC
+
+El motor también puede exponer un servidor gRPC (`GRPC_ENABLED=true`, `GRPC_PORT=9090`). Ver [docs/grpc.md](docs/grpc.md).
+
 ## Configuración (`.env`)
 
 ```bash

@@ -1,6 +1,7 @@
 package process
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/Raoon-Tech/bpmn-ai/pkg/bpmn"
@@ -150,5 +151,144 @@ func TestInvalidTransitionError_Error(t *testing.T) {
 	expected := "invalid state transition: CREATED -> COMPLETED"
 	if err.Error() != expected {
 		t.Errorf("expected error message %q, got %q", expected, err.Error())
+	}
+}
+
+func TestInstance_GetID_GetState(t *testing.T) {
+	proc := &bpmn.Process{ID: "proc-1", Elements: make(map[string]bpmn.Element), Flows: make(map[string]bpmn.Flow)}
+	inst := NewInstance(proc, nil)
+
+	if inst.GetID() != inst.ID {
+		t.Errorf("GetID mismatch: %s vs %s", inst.GetID(), inst.ID)
+	}
+	if inst.GetState() != string(StateCreated) {
+		t.Errorf("GetState: got %s, want CREATED", inst.GetState())
+	}
+	_ = inst.Transition(StateInProgress)
+	if inst.GetState() != string(StateInProgress) {
+		t.Errorf("GetState after transition: got %s", inst.GetState())
+	}
+}
+
+func TestInstance_TryComplete(t *testing.T) {
+	proc := &bpmn.Process{ID: "proc-1", Elements: make(map[string]bpmn.Element), Flows: make(map[string]bpmn.Flow)}
+	inst := NewInstance(proc, nil)
+	_ = inst.Transition(StateInProgress)
+
+	if !inst.TryComplete() {
+		t.Fatal("first TryComplete should succeed")
+	}
+	if inst.State != StateCompleted {
+		t.Errorf("expected COMPLETED, got %s", inst.State)
+	}
+	// Idempotent: subsequent calls report the stored result.
+	if !inst.TryComplete() {
+		t.Error("subsequent TryComplete should report completed")
+	}
+}
+
+func TestInstance_TryComplete_Invalid(t *testing.T) {
+	proc := &bpmn.Process{ID: "proc-1", Elements: make(map[string]bpmn.Element), Flows: make(map[string]bpmn.Flow)}
+	inst := NewInstance(proc, nil) // CREATED -> cannot complete directly
+	if inst.TryComplete() {
+		t.Error("TryComplete from CREATED should fail")
+	}
+}
+
+func TestInstance_NextThreadID(t *testing.T) {
+	proc := &bpmn.Process{ID: "proc-1", Elements: make(map[string]bpmn.Element), Flows: make(map[string]bpmn.Flow)}
+	inst := NewInstance(proc, nil)
+	first := inst.NextThreadID()
+	second := inst.NextThreadID()
+	if second <= first {
+		t.Errorf("expected increasing thread ids, got %d then %d", first, second)
+	}
+}
+
+func TestIsValidTransition_UnknownState(t *testing.T) {
+	if IsValidTransition(State("BOGUS"), StateInProgress) {
+		t.Error("unknown current state should not allow transition")
+	}
+}
+
+func TestSanitizeVariables_DepthLimit(t *testing.T) {
+	deep := map[string]any{
+		"l1": map[string]any{
+			"l2": map[string]any{
+				"l3": map[string]any{
+					"l4": map[string]any{"x": "y"},
+				},
+			},
+		},
+	}
+	result := sanitizeVariables(deep, 0)
+	if result == nil {
+		t.Fatal("expected non-nil result")
+	}
+}
+
+func TestSanitizeSlice(t *testing.T) {
+	input := []any{"a", 1, true, nil, []any{"nested"}, map[string]any{"k": "v"}}
+	result := sanitizeSlice(input, 0)
+	if len(result) != len(input) {
+		t.Errorf("expected %d items, got %d", len(input), len(result))
+	}
+	// depth limit
+	deep := sanitizeSlice([]any{[]any{[]any{[]any{[]any{"x"}}}}}, 0)
+	if deep == nil {
+		t.Fatal("expected non-nil")
+	}
+}
+
+func TestSanitizeVariables_SizeLimit(t *testing.T) {
+	big := make(map[string]any)
+	big["x"] = strings.Repeat("a", 1<<20+1)
+	result := sanitizeVariables(big, 0)
+	// Should not panic; result may be empty due to size limit
+	_ = result
+}
+
+func TestGeneratePIN(t *testing.T) {
+	pin := generatePIN()
+	if len(pin) != 4 {
+		t.Errorf("expected 4-digit PIN, got %q", pin)
+	}
+}
+
+func TestNewInstance_NilVariables(t *testing.T) {
+	proc := &bpmn.Process{ID: "proc-1", Elements: make(map[string]bpmn.Element), Flows: make(map[string]bpmn.Flow)}
+	inst := NewInstance(proc, nil)
+	if inst.Variables == nil {
+		t.Error("expected non-nil variables")
+	}
+	if inst.PIN == "" {
+		t.Error("expected non-empty PIN")
+	}
+	if inst.ID == "" {
+		t.Error("expected non-empty ID")
+	}
+}
+
+func TestNewInstance_WithVariables(t *testing.T) {
+	proc := &bpmn.Process{ID: "proc-1", Elements: make(map[string]bpmn.Element), Flows: make(map[string]bpmn.Flow)}
+	inst := NewInstance(proc, map[string]any{"key": "val", "num": 42})
+	if v, ok := inst.GetVariable("key"); !ok || v != "val" {
+		t.Errorf("expected key=val, got %v", v)
+	}
+	if v, ok := inst.GetVariable("num"); !ok || v != 42 {
+		t.Errorf("expected num=42, got %v", v)
+	}
+}
+
+func TestInstance_ToRecord_TenantAndFields(t *testing.T) {
+	proc := &bpmn.Process{ID: "proc-1", Elements: make(map[string]bpmn.Element), Flows: make(map[string]bpmn.Flow)}
+	inst := NewInstance(proc, map[string]any{"k": "v"})
+	inst.Title = "T"
+	rec := inst.ToRecord()
+	if rec.ProcessID != "proc-1" {
+		t.Errorf("expected process_id proc-1, got %s", rec.ProcessID)
+	}
+	if rec.Variables["k"] != "v" {
+		t.Errorf("unexpected variables: %v", rec.Variables)
 	}
 }

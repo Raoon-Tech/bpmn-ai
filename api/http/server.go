@@ -28,6 +28,7 @@ type ServerConfig struct {
 	MaxBodySize    int64
 	AllowedOrigins []string
 	DisableCSRF    bool
+	Auth           middleware.AuthConfig
 	TLSCertFile    string // path to TLS certificate (empty = no TLS)
 	TLSKeyFile     string // path to TLS private key (empty = no TLS)
 }

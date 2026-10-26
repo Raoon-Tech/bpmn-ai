@@ -52,6 +52,7 @@ type InstanceRecord struct {
 	Title      string
 	Status     InstanceStatus
 	CurrentUser string
+	TenantID   string
 	Variables  map[string]any
 	PIN        string
 	StartedAt  time.Time
@@ -115,6 +116,7 @@ type Store interface {
 	SaveProcess(ctx context.Context, proc *bpmn.Process) error
 	GetProcess(ctx context.Context, id string) (*bpmn.Process, error)
 	ListProcesses(ctx context.Context) ([]*bpmn.Process, error)
+	DeleteProcess(ctx context.Context, id string) error
 
 	// Process instances
 	CreateInstance(ctx context.Context, inst *InstanceRecord) error

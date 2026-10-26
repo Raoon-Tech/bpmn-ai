@@ -36,10 +36,12 @@ func (d *Dispatcher) Register(eventType string, handler EventHandler) {
 	d.handlers[eventType] = append(d.handlers[eventType], handler)
 }
 
-// Dispatch sends an event to all registered handlers for its type.
+// Dispatch sends an event to all registered handlers for its type. Handlers
+// registered under "*" receive every event.
 func (d *Dispatcher) Dispatch(event Event) {
 	d.mu.RLock()
-	handlers := d.handlers[event.Type]
+	handlers := append([]EventHandler{}, d.handlers[event.Type]...)
+	handlers = append(handlers, d.handlers["*"]...)
 	d.mu.RUnlock()
 
 	for _, h := range handlers {
@@ -50,7 +52,8 @@ func (d *Dispatcher) Dispatch(event Event) {
 // DispatchAsync sends an event to handlers in a goroutine.
 func (d *Dispatcher) DispatchAsync(event Event) {
 	d.mu.RLock()
-	handlers := d.handlers[event.Type]
+	handlers := append([]EventHandler{}, d.handlers[event.Type]...)
+	handlers = append(handlers, d.handlers["*"]...)
 	d.mu.RUnlock()
 
 	for _, h := range handlers {

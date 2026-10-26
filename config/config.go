@@ -14,6 +14,8 @@ type Config struct {
 	Database DatabaseConfig
 	Engine   EngineConfig
 	AI       AIConfig
+	Auth     AuthConfig
+	Webhook  WebhookConfig
 	Log      LogConfig
 	Audit    AuditConfig
 }
@@ -29,6 +31,8 @@ type ServerConfig struct {
 	TLSCertFile    string
 	TLSKeyFile     string
 	DisableCSRF    bool
+	GrpcEnabled    bool
+	GrpcPort       int
 }
 
 // Database driver names accepted by DatabaseConfig.Driver.
@@ -114,6 +118,49 @@ type AuditConfig struct {
 	Dir     string
 }
 
+// WebhookConfig holds outbound webhook configuration.
+type WebhookConfig struct {
+	Enabled bool
+	URLs    []string
+	Secret  string
+	Events  []string // "*" means all events
+}
+
+// AuthConfig holds authentication/authorization configuration. The engine does
+// not manage users or roles; it only resolves identity provided by the host.
+type AuthConfig struct {
+	Mode             string   // none, jwt, gateway
+	JWKSURL          string
+	Issuer           string
+	Audience         string
+	UserClaim        string   // default "sub"
+	RolesClaim       string   // default "roles"
+	TenantClaim      string   // default "tenant_id"
+	TrustedProxies   []string // CIDRs/IPs trusted in gateway mode
+	EnforceTaskRoles bool
+}
+
+// Validate checks the auth configuration.
+func (a AuthConfig) Validate() error {
+	switch a.Mode {
+	case "", "none", "jwt", "gateway":
+	default:
+		return fmt.Errorf("unsupported AUTH_MODE %q (expected none, jwt or gateway)", a.Mode)
+	}
+	if a.Mode == "jwt" {
+		if a.JWKSURL == "" {
+			return fmt.Errorf("AUTH_JWKS_URL is required when AUTH_MODE=jwt")
+		}
+	}
+	if a.Mode == "gateway" && len(a.TrustedProxies) == 0 {
+		return fmt.Errorf("AUTH_TRUSTED_PROXIES is required when AUTH_MODE=gateway")
+	}
+	if a.UserClaim == "" {
+		// normalized later by middleware, but keep config consistent
+	}
+	return nil
+}
+
 // Default returns a configuration with sensible defaults.
 func Default() Config {
 	dbURL := strings.TrimSpace(os.Getenv("DATABASE_URL"))
@@ -145,6 +192,8 @@ func Default() Config {
 			MaxBodySize:    10 << 20, // 10MB
 			AllowedOrigins: []string{"https://localhost:3000"},
 			DisableCSRF:    parseBoolEnv("SERVER_DISABLE_CSRF", false),
+			GrpcEnabled:    parseBoolEnv("GRPC_ENABLED", false),
+			GrpcPort:       parseEnvInt("GRPC_PORT", 9090),
 		},
 		Database: DatabaseConfig{
 			Driver:           dbDriver,
@@ -195,6 +244,23 @@ func Default() Config {
 		Audit: AuditConfig{
 			Enabled: parseBoolEnv("AUDIT_LOG_ENABLED", true),
 			Dir:     envOrDefault("AUDIT_LOG_DIR", "./data/audit"),
+		},
+		Webhook: WebhookConfig{
+			Enabled: len(splitCSV(os.Getenv("WEBHOOK_URL"))) > 0,
+			URLs:    splitCSV(os.Getenv("WEBHOOK_URL")),
+			Secret:  os.Getenv("WEBHOOK_SECRET"),
+			Events:  splitCSV(envOrDefault("WEBHOOK_EVENTS", "*")),
+		},
+		Auth: AuthConfig{
+			Mode:             strings.ToLower(envOrDefault("AUTH_MODE", "none")),
+			JWKSURL:          os.Getenv("AUTH_JWKS_URL"),
+			Issuer:           os.Getenv("AUTH_ISSUER"),
+			Audience:         os.Getenv("AUTH_AUDIENCE"),
+			UserClaim:        envOrDefault("AUTH_USER_CLAIM", "sub"),
+			RolesClaim:       envOrDefault("AUTH_ROLES_CLAIM", "roles"),
+			TenantClaim:      envOrDefault("AUTH_TENANT_CLAIM", "tenant_id"),
+			TrustedProxies:   splitCSV(os.Getenv("AUTH_TRUSTED_PROXIES")),
+			EnforceTaskRoles: parseBoolEnv("AUTH_ENFORCE_TASK_ROLES", false),
 		},
 	}
 }
@@ -255,6 +321,18 @@ func envOrDefault(key, defaultVal string) string {
 	return val
 }
 
+// splitCSV splits a comma separated string into trimmed, non-empty items.
+func splitCSV(value string) []string {
+	var out []string
+	for _, part := range strings.Split(value, ",") {
+		part = strings.TrimSpace(part)
+		if part != "" {
+			out = append(out, part)
+		}
+	}
+	return out
+}
+
 // inferDriver derives the database driver from a DSN scheme.
 func inferDriver(dsn string) string {
 	lower := strings.ToLower(dsn)
@@ -313,6 +391,9 @@ func (c Config) Validate() error {
 		return fmt.Errorf("both TLSCertFile and TLSKeyFile must be provided for TLS")
 	}
 	if err := c.Database.Validate(); err != nil {
+		return err
+	}
+	if err := c.Auth.Validate(); err != nil {
 		return err
 	}
 	return nil

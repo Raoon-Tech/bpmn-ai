@@ -19,6 +19,32 @@ const (
 	exitUsage = 2
 )
 
+// reorderArgs moves flags (and their values) before positional arguments so
+// that callers can write "cmd <id> --flag value" as well as
+// "cmd --flag value <id>". Go's flag package stops parsing at the first
+// positional argument.
+func reorderArgs(args []string) []string {
+	var flags, positionals []string
+	i := 0
+	for i < len(args) {
+		a := args[i]
+		if strings.HasPrefix(a, "-") {
+			flags = append(flags, a)
+			// If the flag has no "=", the next token is its value.
+			if !strings.Contains(a, "=") && i+1 < len(args) && !strings.HasPrefix(args[i+1], "-") {
+				flags = append(flags, args[i+1])
+				i += 2
+				continue
+			}
+			i++
+			continue
+		}
+		positionals = append(positionals, a)
+		i++
+	}
+	return append(flags, positionals...)
+}
+
 const usageText = `bpmn-ai — BPMN 2.0 execution engine
 
 USAGE
@@ -28,6 +54,13 @@ COMMANDS
   serve                  Start the HTTP engine (default when no command is given)
   migrate <subcommand>   Manage versioned database migrations
   db <subcommand>        Database operations (ping, stats, seed)
+  process <subcommand>   Manage process definitions
+  case <subcommand>      Manage process instances (cases)
+  task <subcommand>      Manage user tasks
+  job <subcommand>       Manage the job queue
+  message <subcommand>   Send a message to a waiting instance
+  signal <subcommand>    Broadcast a signal
+  ai <subcommand>        Manage AI providers (multi-provider)
   config show            Print the effective configuration (secrets masked)
   doctor                 Check configuration, database and migrations
   version                Print version information
@@ -55,6 +88,20 @@ func Run(args []string) int {
 		return cmdMigrate(rest)
 	case "db":
 		return cmdDB(rest)
+	case "process":
+		return cmdProcess(rest)
+	case "case":
+		return cmdCase(rest)
+	case "task":
+		return cmdTask(rest)
+	case "job":
+		return cmdJob(rest)
+	case "message":
+		return cmdMessage(rest)
+	case "signal":
+		return cmdSignal(rest)
+	case "ai":
+		return cmdAI(rest)
 	case "config":
 		return cmdConfig(rest)
 	case "doctor":

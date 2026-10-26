@@ -20,6 +20,9 @@ func (s *Server) routes() {
 		if !s.config.DisableCSRF {
 			r.Use(middleware.CSRF)
 		}
+		if s.config.Auth.Mode != "" && s.config.Auth.Mode != "none" {
+			r.Use(middleware.Auth(s.config.Auth))
+		}
 
 		r.Get("/csrf-token", s.getCSRFToken)
 		r.Post("/processes", s.createProcess)

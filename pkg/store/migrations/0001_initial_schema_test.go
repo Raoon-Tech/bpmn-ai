@@ -29,7 +29,7 @@ func TestInitialSchemaCreatesEveryTable(t *testing.T) {
 	if err != nil {
 		t.Fatalf("apply migrations: %v", err)
 	}
-	if len(applied) != 1 || applied[0] != "0001_initial_schema" {
+	if len(applied) != 4 || applied[0] != "0001_initial_schema" || applied[1] != "0002_ai_providers" || applied[2] != "0003_ai_model_profiles" || applied[3] != "0004_tenant_id" {
 		t.Fatalf("unexpected applied migrations: %v", applied)
 	}
 
@@ -65,11 +65,11 @@ func TestInitialSchemaRollback(t *testing.T) {
 	if _, err := migrate.Up(ctx, db, migrate.Options{}); err != nil {
 		t.Fatalf("apply migrations: %v", err)
 	}
-	rolledBack, err := migrate.Down(ctx, db, 1, migrate.Options{})
+	rolledBack, err := migrate.Down(ctx, db, 4, migrate.Options{})
 	if err != nil {
 		t.Fatalf("rollback migrations: %v", err)
 	}
-	if len(rolledBack) != 1 || rolledBack[0] != "0001_initial_schema" {
+	if len(rolledBack) != 4 || rolledBack[0] != "0004_tenant_id" || rolledBack[1] != "0003_ai_model_profiles" || rolledBack[2] != "0002_ai_providers" || rolledBack[3] != "0001_initial_schema" {
 		t.Fatalf("unexpected rollback: %v", rolledBack)
 	}
 	for _, table := range []string{"processes", "instances", "ai_audit_log"} {

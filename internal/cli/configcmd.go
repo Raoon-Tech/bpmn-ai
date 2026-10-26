@@ -34,7 +34,7 @@ func cmdConfigShow(args []string) int {
 	fs := flag.NewFlagSet("config show", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
 	asJSON := fs.Bool("json", false, "print the configuration as JSON")
-	if err := fs.Parse(args); err != nil {
+	if err := fs.Parse(reorderArgs(args)); err != nil {
 		return exitUsage
 	}
 	if fs.NArg() > 0 {

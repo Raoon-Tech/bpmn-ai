@@ -11,6 +11,7 @@ import (
 	"github.com/Raoon-Tech/bpmn-ai/config"
 	"github.com/Raoon-Tech/bpmn-ai/internal/bootstrap"
 	"github.com/Raoon-Tech/bpmn-ai/pkg/bpmn"
+	"github.com/Raoon-Tech/bpmn-ai/pkg/store/migrate"
 	"github.com/Raoon-Tech/bpmn-ai/pkg/store/orm"
 )
 
@@ -51,7 +52,7 @@ EXAMPLES
 func cmdDBPing(args []string) int {
 	fs := flag.NewFlagSet("db ping", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
-	if err := fs.Parse(args); err != nil {
+	if err := fs.Parse(reorderArgs(args)); err != nil {
 		return exitUsage
 	}
 	if fs.NArg() > 0 {
@@ -95,7 +96,7 @@ func cmdDBPing(args []string) int {
 func cmdDBStats(args []string) int {
 	fs := flag.NewFlagSet("db stats", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
-	if err := fs.Parse(args); err != nil {
+	if err := fs.Parse(reorderArgs(args)); err != nil {
 		return exitUsage
 	}
 	if fs.NArg() > 0 {
@@ -134,7 +135,7 @@ func cmdDBStats(args []string) int {
 func cmdDBSeed(args []string) int {
 	fs := flag.NewFlagSet("db seed", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
-	if err := fs.Parse(args); err != nil {
+	if err := fs.Parse(reorderArgs(args)); err != nil {
 		return exitUsage
 	}
 	if fs.NArg() != 1 {
@@ -163,7 +164,8 @@ func cmdDBSeed(args []string) int {
 	return exitOK
 }
 
-// openBackend loads the configuration and opens the configured backend.
+// openBackend loads the configuration, opens the backend and makes sure the
+// schema is up to date (it runs pending migrations when DB_AUTO_MIGRATE is on).
 func openBackend() (config.Config, *bootstrap.Backend, int) {
 	cfg, err := loadConfig()
 	if err != nil {
@@ -172,6 +174,25 @@ func openBackend() (config.Config, *bootstrap.Backend, int) {
 	backend, err := bootstrap.Open(context.Background(), cfg.Database)
 	if err != nil {
 		return cfg, nil, fail("open database (%s): %v", bootstrap.Describe(cfg.Database), err)
+	}
+	if backend.DB != nil {
+		if cfg.Database.AutoMigrate {
+			if _, err := migrate.Up(context.Background(), backend.DB, migrate.Options{}); err != nil {
+				_ = backend.Close()
+				return cfg, nil, fail("migrations: %v", err)
+			}
+		} else {
+			pending, err := migrate.Pending(context.Background(), backend.DB, migrate.Options{})
+			if err != nil {
+				_ = backend.Close()
+				return cfg, nil, fail("migrations: %v", err)
+			}
+			if len(pending) > 0 {
+				_ = backend.Close()
+				return cfg, nil, fail("%d pending migration(s): %s (run 'bpmn-ai migrate up')",
+					len(pending), strings.Join(pending, ", "))
+			}
+		}
 	}
 	return cfg, backend, exitOK
 }

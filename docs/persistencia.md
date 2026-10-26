@@ -34,6 +34,8 @@ internal/bootstrap.Open
 | `dead_letters` | Trabajos que agotaron reintentos |
 | `execution_log` | Auditoría de ejecución |
 | `ai_audit_log` | Auditoría de llamadas a IA |
+| `ai_providers` | Proveedores de IA configurados (multi-proveedor) |
+| `ai_model_profiles` | Perfiles de enrutado de modelos (complex, fast, cheap, auto) |
 | `schema_migrations` | Control de versiones de migraciones |
 
 ## Variables de entorno

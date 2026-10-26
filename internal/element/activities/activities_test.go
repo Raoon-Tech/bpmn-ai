@@ -2,6 +2,8 @@ package activities
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/Raoon-Tech/bpmn-ai/internal/element"
@@ -334,5 +336,230 @@ func TestCallActivity_Execute_NoCalledElement(t *testing.T) {
 	})
 	if result.Action != element.ActionRoute {
 		t.Errorf("expected ActionRoute for empty calledElement, got %s", result.Action)
+	}
+}
+
+func TestScriptTask_BusinessRule(t *testing.T) {
+	elem := bpmn.Element{
+		ID: "script-1", Name: "Business Rule",
+		TaskType: bpmn.TaskTypeScript,
+		ExtensionData: map[string]string{
+			"scriptBody": "a + b",
+			"scriptType": "business_rule",
+		},
+	}
+	task, _ := NewScriptTask(elem)
+	ctx := &mockExecCtx{
+		flow:      &store.FlowRecord{ElementID: "script-1"},
+		variables: map[string]any{"a": float64(2), "b": float64(3)},
+	}
+	result := task.Execute(context.Background(), ctx)
+	if result.Action != element.ActionRoute {
+		t.Errorf("expected ActionRoute, got %s", result.Action)
+	}
+	val, _ := ctx.GetVariable("script_result")
+	if val != float64(5) {
+		t.Errorf("expected 5, got %v", val)
+	}
+}
+
+func TestScriptTask_BusinessRule_Invalid(t *testing.T) {
+	elem := bpmn.Element{
+		ID: "script-1", Name: "Business Rule",
+		TaskType: bpmn.TaskTypeScript,
+		ExtensionData: map[string]string{
+			"scriptBody": "a +",
+			"scriptType": "business_rule",
+		},
+	}
+	task, _ := NewScriptTask(elem)
+	ctx := &mockExecCtx{
+		flow:      &store.FlowRecord{ElementID: "script-1"},
+		variables: make(map[string]any),
+	}
+	task.Execute(context.Background(), ctx)
+	val, _ := ctx.GetVariable("script_result")
+	if !strings.HasPrefix(fmt.Sprintf("%v", val), "error:") {
+		t.Errorf("expected error result, got %v", val)
+	}
+}
+
+func TestScriptTask_BusinessRule_EvalError(t *testing.T) {
+	elem := bpmn.Element{
+		ID: "script-1", Name: "Business Rule",
+		TaskType: bpmn.TaskTypeScript,
+		ExtensionData: map[string]string{
+			"scriptBody": "a + b",
+			"scriptType": "business_rule",
+		},
+	}
+	task, _ := NewScriptTask(elem)
+	ctx := &mockExecCtx{
+		flow:      &store.FlowRecord{ElementID: "script-1"},
+		variables: map[string]any{"a": float64(1)}, // b missing
+	}
+	task.Execute(context.Background(), ctx)
+	val, _ := ctx.GetVariable("script_result")
+	if !strings.HasPrefix(fmt.Sprintf("%v", val), "error:") {
+		t.Errorf("expected eval error, got %v", val)
+	}
+}
+
+func TestScriptTask_ChangeField_InvalidFormat(t *testing.T) {
+	elem := bpmn.Element{
+		ID: "script-1", Name: "Change Field",
+		TaskType: bpmn.TaskTypeScript,
+		ExtensionData: map[string]string{
+			"scriptBody": "noequals",
+			"scriptType": "change_field",
+		},
+	}
+	task, _ := NewScriptTask(elem)
+	ctx := &mockExecCtx{
+		flow:      &store.FlowRecord{ElementID: "script-1"},
+		variables: make(map[string]any),
+	}
+	task.Execute(context.Background(), ctx)
+	val, _ := ctx.GetVariable("script_result")
+	if !strings.HasPrefix(fmt.Sprintf("%v", val), "error:") {
+		t.Errorf("expected error, got %v", val)
+	}
+}
+
+func TestScriptTask_AssignTeam(t *testing.T) {
+	elem := bpmn.Element{
+		ID: "script-1", Name: "Assign Team",
+		TaskType: bpmn.TaskTypeScript,
+		ExtensionData: map[string]string{
+			"scriptBody": "team-7",
+			"scriptType": "assign_team",
+		},
+	}
+	task, _ := NewScriptTask(elem)
+	ctx := &mockExecCtx{
+		flow:      &store.FlowRecord{ElementID: "script-1"},
+		variables: make(map[string]any),
+	}
+	task.Execute(context.Background(), ctx)
+	val, _ := ctx.GetVariable("assigned_team")
+	if val != "team-7" {
+		t.Errorf("expected team-7, got %v", val)
+	}
+}
+
+func TestScriptTask_AddRelated(t *testing.T) {
+	elem := bpmn.Element{
+		ID: "script-1", Name: "Add Related",
+		TaskType: bpmn.TaskTypeScript,
+		ExtensionData: map[string]string{
+			"scriptBody": "entity-9",
+			"scriptType": "add_related",
+		},
+	}
+	task, _ := NewScriptTask(elem)
+	ctx := &mockExecCtx{
+		flow:      &store.FlowRecord{ElementID: "script-1"},
+		variables: make(map[string]any),
+	}
+	task.Execute(context.Background(), ctx)
+	val, _ := ctx.GetVariable("related_entity")
+	if val != "entity-9" {
+		t.Errorf("expected entity-9, got %v", val)
+	}
+}
+
+func TestScriptTask_ExpressionError(t *testing.T) {
+	elem := bpmn.Element{
+		ID: "script-1", Name: "Bad Expr",
+		TaskType: bpmn.TaskTypeScript,
+		ExtensionData: map[string]string{
+			"scriptBody": "1 +",
+		},
+	}
+	task, _ := NewScriptTask(elem)
+	ctx := &mockExecCtx{
+		flow:      &store.FlowRecord{ElementID: "script-1"},
+		variables: make(map[string]any),
+	}
+	task.Execute(context.Background(), ctx)
+	val, _ := ctx.GetVariable("script_result")
+	if !strings.HasPrefix(fmt.Sprintf("%v", val), "error:") {
+		t.Errorf("expected error, got %v", val)
+	}
+}
+
+func TestScriptTask_EvalExpressionError(t *testing.T) {
+	elem := bpmn.Element{
+		ID: "script-1", Name: "Expr Error",
+		TaskType: bpmn.TaskTypeScript,
+		ExtensionData: map[string]string{
+			"scriptBody": "x + 1",
+		},
+	}
+	task, _ := NewScriptTask(elem)
+	ctx := &mockExecCtx{
+		flow:      &store.FlowRecord{ElementID: "script-1"},
+		variables: make(map[string]any), // x missing -> eval error
+	}
+	task.Execute(context.Background(), ctx)
+	val, _ := ctx.GetVariable("script_result")
+	if !strings.HasPrefix(fmt.Sprintf("%v", val), "error:") {
+		t.Errorf("expected error, got %v", val)
+	}
+}
+
+func TestUserTask_Accessors(t *testing.T) {
+	elem := bpmn.Element{
+		ID:             "ut-1",
+		Name:           "Review",
+		TaskType:       bpmn.TaskTypeUser,
+		Assignee:       "user-1",
+		CandidateUsers: []string{"u1", "u2"},
+		CandidateGroups: []string{"g1"},
+	}
+	rawUt, _ := NewUserTask(elem)
+	task := rawUt.(*UserTask)
+	if task.CandidateUsers() == nil || len(task.CandidateUsers()) != 2 {
+		t.Errorf("expected 2 candidate users, got %v", task.CandidateUsers())
+	}
+	if task.CandidateGroups() == nil || len(task.CandidateGroups()) != 1 {
+		t.Errorf("expected 1 candidate group, got %v", task.CandidateGroups())
+	}
+}
+
+func TestServiceTask_Accessors(t *testing.T) {
+	elem := bpmn.Element{
+		ID:       "svc-1",
+		Name:     "Call API",
+		TaskType: bpmn.TaskTypeService,
+	}
+	rawSvc, _ := NewServiceTask(elem)
+	task := rawSvc.(*ServiceTask)
+	if task.Assignee() != "" {
+		t.Errorf("expected empty assignee")
+	}
+	if task.CandidateUsers() != nil {
+		t.Errorf("expected nil candidate users")
+	}
+	if task.CandidateGroups() != nil {
+		t.Errorf("expected nil candidate groups")
+	}
+}
+
+func TestScriptTask_Accessors(t *testing.T) {
+	elem := bpmn.Element{ID: "s-1", Name: "Script", TaskType: bpmn.TaskTypeScript}
+	rawSc, _ := NewScriptTask(elem)
+	task := rawSc.(*ScriptTask)
+	if task.Assignee() != "" {
+		t.Errorf("expected empty assignee")
+	}
+	if task.CandidateUsers() != nil {
+		t.Errorf("expected nil candidate users")
+	}
+	if task.CandidateGroups() != nil {
+		t.Errorf("expected nil candidate groups")
+	}
+	if task.TaskType() != bpmn.TaskTypeScript {
+		t.Errorf("expected TaskTypeScript")
 	}
 }

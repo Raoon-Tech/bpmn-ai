@@ -66,11 +66,24 @@ func (s *Store) ListProcesses(_ context.Context) ([]*bpmn.Process, error) {
 	return result, nil
 }
 
-func (s *Store) CreateInstance(_ context.Context, inst *store.InstanceRecord) error {
+func (s *Store) DeleteProcess(_ context.Context, id string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if _, ok := s.processes[id]; !ok {
+		return fmt.Errorf("process %s not found", id)
+	}
+	delete(s.processes, id)
+	return nil
+}
+
+func (s *Store) CreateInstance(ctx context.Context, inst *store.InstanceRecord) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if inst.ID == "" {
 		inst.ID = uuid.New().String()
+	}
+	if inst.TenantID == "" {
+		inst.TenantID = store.TenantFromContext(ctx)
 	}
 	inst.StartedAt = time.Now()
 	inst.UpdatedAt = inst.StartedAt
@@ -78,11 +91,14 @@ func (s *Store) CreateInstance(_ context.Context, inst *store.InstanceRecord) er
 	return nil
 }
 
-func (s *Store) GetInstance(_ context.Context, id string) (*store.InstanceRecord, error) {
+func (s *Store) GetInstance(ctx context.Context, id string) (*store.InstanceRecord, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	i, ok := s.instances[id]
 	if !ok {
+		return nil, fmt.Errorf("instance %s not found", id)
+	}
+	if tenant := store.TenantFromContext(ctx); tenant != "" && i.TenantID != "" && i.TenantID != tenant {
 		return nil, fmt.Errorf("instance %s not found", id)
 	}
 	return i, nil
@@ -96,11 +112,15 @@ func (s *Store) UpdateInstance(_ context.Context, inst *store.InstanceRecord) er
 	return nil
 }
 
-func (s *Store) ListInstances(_ context.Context, status store.InstanceStatus) ([]*store.InstanceRecord, error) {
+func (s *Store) ListInstances(ctx context.Context, status store.InstanceStatus) ([]*store.InstanceRecord, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
+	tenant := store.TenantFromContext(ctx)
 	var result []*store.InstanceRecord
 	for _, i := range s.instances {
+		if tenant != "" && i.TenantID != "" && i.TenantID != tenant {
+			continue
+		}
 		if status == "" || i.Status == status {
 			result = append(result, i)
 		}

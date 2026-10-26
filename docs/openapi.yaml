@@ -1,0 +1,179 @@
+openapi: 3.0.3
+info:
+  title: BPMN-AI Engine API
+  version: 1.0.0
+  description: REST API of the standalone BPMN 2.0 execution engine.
+servers:
+  - url: http://localhost:8080
+paths:
+  /health:
+    get:
+      summary: Health check
+      responses:
+        '200':
+          description: OK
+  /ready:
+    get:
+      summary: Readiness check
+      responses:
+        '200':
+          description: Ready
+  /metrics:
+    get:
+      summary: Prometheus metrics
+      responses:
+        '200':
+          description: Metrics
+  /api/v1/processes:
+    post:
+      summary: Deploy a process
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, bpmn_xml]
+              properties:
+                name: { type: string }
+                bpmn_xml: { type: string }
+      responses:
+        '201': { description: Created }
+    get:
+      summary: List processes
+      responses:
+        '200': { description: OK }
+  /api/v1/processes/{id}:
+    get:
+      summary: Get a process
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: OK }
+        '404': { description: Not found }
+  /api/v1/processes/{id}/start:
+    post:
+      summary: Start a case
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title: { type: string }
+                variables: { type: object }
+      responses:
+        '201': { description: Created }
+  /api/v1/cases:
+    get:
+      summary: List cases
+      parameters:
+        - in: query
+          name: status
+          schema: { type: string }
+      responses:
+        '200': { description: OK }
+  /api/v1/cases/{id}:
+    get:
+      summary: Get a case
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: OK }
+  /api/v1/cases/{id}/tasks:
+    get:
+      summary: List active tasks of a case
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: OK }
+  /api/v1/cases/{id}/history:
+    get:
+      summary: Execution history
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: OK }
+  /api/v1/tasks/{id}/claim:
+    post:
+      summary: Claim a task
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                user_id: { type: string }
+      responses:
+        '200': { description: OK }
+  /api/v1/tasks/{id}/complete:
+    post:
+      summary: Complete a task
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                variables: { type: object }
+      responses:
+        '200': { description: OK }
+  /api/v1/messages:
+    post:
+      summary: Send a message to a waiting instance
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                instance_id: { type: string, format: uuid }
+                message_ref: { type: string }
+                variables: { type: object }
+      responses:
+        '200': { description: OK }
+  /api/v1/signals:
+    post:
+      summary: Broadcast a signal
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                signal_ref: { type: string }
+                variables: { type: object }
+      responses:
+        '200': { description: OK }
+  /api/v1/csrf-token:
+    get:
+      summary: Get a CSRF token
+      responses:
+        '200': { description: OK }

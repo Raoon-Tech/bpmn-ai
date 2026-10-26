@@ -9,7 +9,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - ORM-backed persistence store (`pkg/store/orm`) on GORM supporting PostgreSQL, MySQL and SQLite.
 - Configurable database backend through `DB_DRIVER` (`memory`, `postgres`, `mysql`, `sqlite`) and `DB_*` variables.
 - Versioned database migrations runner (`pkg/store/migrate`) with `up`, `down`, `status`, `create`, `auto`, `baseline` and `reset`.
-- Command line interface: `serve`, `migrate`, `db`, `config`, `doctor`, `version`.
+- Command line interface: `serve`, `migrate`, `db`, `process`, `case`, `task`, `job`, `message`, `signal`, `ai`, `config`, `doctor`, `version`.
+- Business commands: process/case/task/job management, message and signal delivery, job drain.
+- AI provider management from the CLI (`ai provider ...`) stored in the `ai_providers` table.
+- Model profile management from the CLI (`ai profile ...`) stored in the `ai_model_profiles` table.
+- Auth delegation (`AUTH_MODE=none|jwt|gateway`) with JWKS validation and trusted-proxy gateway mode.
+- Multi-tenant support (`tenant_id` on instances, context-based filtering).
+- Outbound webhooks with HMAC signing and exponential-backoff retries.
+- OpenAPI spec and Python/PHP examples.
+- gRPC server (`GRPC_ENABLED`, `GRPC_PORT`) with proto definition and generated stubs.
 - `SERVER_DISABLE_CSRF` environment variable.
 - Documentation: `docs/persistence.md`, `docs/migrations.md`, `docs/cli.md` (and Spanish versions).
 

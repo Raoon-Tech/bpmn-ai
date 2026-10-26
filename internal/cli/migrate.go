@@ -71,7 +71,7 @@ EXAMPLES
 func cmdMigrateStatus(args []string) int {
 	fs := flag.NewFlagSet("migrate status", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
-	if err := fs.Parse(args); err != nil {
+	if err := fs.Parse(reorderArgs(args)); err != nil {
 		return exitUsage
 	}
 	if fs.NArg() > 0 {
@@ -115,7 +115,7 @@ func cmdMigrateUp(args []string) int {
 	fs.SetOutput(os.Stderr)
 	to := fs.String("to", "", "stop after this migration version (inclusive)")
 	dryRun := fs.Bool("dry-run", false, "print the migrations that would run without executing them")
-	if err := fs.Parse(args); err != nil {
+	if err := fs.Parse(reorderArgs(args)); err != nil {
 		return exitUsage
 	}
 	if fs.NArg() > 0 {
@@ -156,7 +156,7 @@ func cmdMigrateDown(args []string) int {
 	steps := fs.Int("steps", 1, "number of migrations to roll back")
 	force := fs.Bool("force", false, "confirm the destructive rollback")
 	dryRun := fs.Bool("dry-run", false, "print the migrations that would roll back without executing them")
-	if err := fs.Parse(args); err != nil {
+	if err := fs.Parse(reorderArgs(args)); err != nil {
 		return exitUsage
 	}
 	if fs.NArg() > 0 {
@@ -204,7 +204,7 @@ func cmdMigrateReset(args []string) int {
 	fs := flag.NewFlagSet("migrate reset", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
 	force := fs.Bool("force", false, "confirm dropping every table")
-	if err := fs.Parse(args); err != nil {
+	if err := fs.Parse(reorderArgs(args)); err != nil {
 		return exitUsage
 	}
 	if fs.NArg() > 0 {
@@ -248,7 +248,7 @@ func cmdMigrateCreate(args []string) int {
 	fs := flag.NewFlagSet("migrate create", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
 	dir := fs.String("dir", "pkg/store/migrations", "directory where the migration file is written")
-	if err := fs.Parse(args); err != nil {
+	if err := fs.Parse(reorderArgs(args)); err != nil {
 		return exitUsage
 	}
 	if fs.NArg() != 1 {
@@ -269,7 +269,7 @@ func cmdMigrateCreate(args []string) int {
 func cmdMigrateAuto(args []string) int {
 	fs := flag.NewFlagSet("migrate auto", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
-	if err := fs.Parse(args); err != nil {
+	if err := fs.Parse(reorderArgs(args)); err != nil {
 		return exitUsage
 	}
 	if fs.NArg() > 0 {
@@ -295,7 +295,7 @@ func cmdMigrateBaseline(args []string) int {
 	fs := flag.NewFlagSet("migrate baseline", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
 	all := fs.Bool("all", false, "mark every registered migration as applied")
-	if err := fs.Parse(args); err != nil {
+	if err := fs.Parse(reorderArgs(args)); err != nil {
 		return exitUsage
 	}
 	if fs.NArg() > 1 {

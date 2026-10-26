@@ -1,0 +1,157 @@
+syntax = "proto3";
+
+package bpmn;
+
+option go_package = "github.com/Raoon-Tech/bpmn-ai/api/grpc/pb";
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+// Health service.
+service HealthService {
+  rpc Check(HealthCheckRequest) returns (HealthCheckResponse);
+}
+
+message HealthCheckRequest {}
+message HealthCheckResponse {
+  string status = 1;
+  string version = 2;
+}
+
+// Process service.
+service ProcessService {
+  rpc DeployProcess(DeployProcessRequest) returns (DeployProcessResponse);
+  rpc GetProcess(GetProcessRequest) returns (ProcessResponse);
+  rpc ListProcesses(ListProcessesRequest) returns (ListProcessesResponse);
+  rpc DeleteProcess(DeleteProcessRequest) returns (DeleteProcessResponse);
+}
+
+message DeployProcessRequest {
+  string name = 1;
+  string bpmn_xml = 2;
+}
+message DeployProcessResponse {
+  string id = 1;
+  string name = 2;
+}
+message GetProcessRequest { string id = 1; }
+message ProcessResponse {
+  string id = 1;
+  string name = 2;
+  int32 version = 3;
+  google.protobuf.Timestamp created_at = 4;
+}
+message ListProcessesRequest {}
+message ListProcessesResponse {
+  repeated ProcessResponse processes = 1;
+}
+message DeleteProcessRequest { string id = 1; }
+message DeleteProcessResponse { bool deleted = 1; }
+
+// Case service.
+service CaseService {
+  rpc StartCase(StartCaseRequest) returns (StartCaseResponse);
+  rpc GetCase(GetCaseRequest) returns (CaseResponse);
+  rpc ListCases(ListCasesRequest) returns (ListCasesResponse);
+  rpc CancelCase(CancelCaseRequest) returns (CancelCaseResponse);
+  rpc GetCaseHistory(GetCaseHistoryRequest) returns (GetCaseHistoryResponse);
+}
+
+message StartCaseRequest {
+  string process_id = 1;
+  string title = 2;
+  map<string, google.protobuf.Value> variables = 3;
+}
+message StartCaseResponse {
+  string id = 1;
+  string status = 2;
+}
+message GetCaseRequest { string id = 1; }
+message CaseResponse {
+  string id = 1;
+  string process_id = 2;
+  string title = 3;
+  string status = 4;
+  string current_user = 5;
+  google.protobuf.Struct variables = 6;
+  google.protobuf.Timestamp started_at = 7;
+  google.protobuf.Timestamp finished_at = 8;
+}
+message ListCasesRequest { string status = 1; }
+message ListCasesResponse {
+  repeated CaseResponse cases = 1;
+}
+message CancelCaseRequest { string id = 1; }
+message CancelCaseResponse { bool cancelled = 1; }
+message GetCaseHistoryRequest { string id = 1; }
+message HistoryEntry {
+  string id = 1;
+  string element_id = 2;
+  string element_type = 3;
+  string action = 4;
+  int32 duration_ms = 5;
+  google.protobuf.Timestamp created_at = 6;
+}
+message GetCaseHistoryResponse {
+  repeated HistoryEntry entries = 1;
+}
+
+// Task service.
+service TaskService {
+  rpc ListTasks(ListTasksRequest) returns (ListTasksResponse);
+  rpc ClaimTask(ClaimTaskRequest) returns (ClaimTaskResponse);
+  rpc CompleteTask(CompleteTaskRequest) returns (CompleteTaskResponse);
+}
+
+message ListTasksRequest { string case_id = 1; }
+message TaskInfo {
+  string flow_id = 1;
+  string element_id = 2;
+  string status = 3;
+  int32 thread_id = 4;
+}
+message ListTasksResponse {
+  repeated TaskInfo tasks = 1;
+}
+message ClaimTaskRequest {
+  string flow_id = 1;
+  string user_id = 2;
+}
+message ClaimTaskResponse {
+  string flow_id = 1;
+  string claimed_by = 2;
+  string status = 3;
+}
+message CompleteTaskRequest {
+  string flow_id = 1;
+  map<string, google.protobuf.Value> variables = 2;
+}
+message CompleteTaskResponse {
+  string task_id = 1;
+  string status = 2;
+}
+
+// Message service.
+service MessageService {
+  rpc SendMessage(SendMessageRequest) returns (SendMessageResponse);
+}
+
+message SendMessageRequest {
+  string instance_id = 1;
+  string message_ref = 2;
+  map<string, google.protobuf.Value> variables = 3;
+}
+message SendMessageResponse { bool delivered = 1; }
+
+// Signal service.
+service SignalService {
+  rpc SendSignal(SendSignalRequest) returns (SendSignalResponse);
+}
+
+message SendSignalRequest {
+  string signal_ref = 1;
+  map<string, google.protobuf.Value> variables = 2;
+}
+message SendSignalResponse {
+  repeated string affected_instances = 1;
+}

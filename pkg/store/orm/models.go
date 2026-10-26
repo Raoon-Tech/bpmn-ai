@@ -25,6 +25,7 @@ type InstanceModel struct {
 	Title       string         `gorm:"column:title;type:varchar(255);not null;default:''"`
 	Status      string         `gorm:"column:status;type:varchar(32);not null;index"`
 	CurrentUser string         `gorm:"column:current_user;type:varchar(255);not null;default:''"`
+	TenantID    string         `gorm:"column:tenant_id;type:varchar(64);not null;default:'';index"`
 	Variables   datatypes.JSON `gorm:"column:variables"`
 	PIN         string         `gorm:"column:pin;type:varchar(255);not null;default:''"`
 	StartedAt   time.Time      `gorm:"column:started_at;not null"`
@@ -133,6 +134,33 @@ type AIAuditLogModel struct {
 // TableName returns the physical table name.
 func (AIAuditLogModel) TableName() string { return "ai_audit_log" }
 
+// AIModelProfile stores a model routing profile (complex, fast, cheap, auto).
+type AIModelProfile struct {
+	Name      string    `gorm:"column:name;type:varchar(64);primaryKey"`
+	Model     string    `gorm:"column:model;type:varchar(255);not null"`
+	MaxTokens int       `gorm:"column:max_tokens;not null;default:4096"`
+	Priority  string    `gorm:"column:priority;type:varchar(32);not null;default:'quality'"`
+	UpdatedAt time.Time `gorm:"column:updated_at"`
+}
+
+// TableName returns the physical table name.
+func (AIModelProfile) TableName() string { return "ai_model_profiles" }
+
+// AIProviderModel stores a configured AI provider (multi-provider setup).
+type AIProviderModel struct {
+	Name        string    `gorm:"column:name;type:varchar(64);primaryKey"`
+	Type        string    `gorm:"column:type;type:varchar(32);not null"`
+	BaseURL     string    `gorm:"column:base_url;type:varchar(512);not null;default:''"`
+	APIKey      string    `gorm:"column:api_key;type:text;not null;default:''"`
+	DefaultModel string   `gorm:"column:default_model;type:varchar(128);not null;default:''"`
+	IsDefault   bool      `gorm:"column:is_default;not null;default:false"`
+	CreatedAt   time.Time `gorm:"column:created_at"`
+	UpdatedAt   time.Time `gorm:"column:updated_at"`
+}
+
+// TableName returns the physical table name.
+func (AIProviderModel) TableName() string { return "ai_providers" }
+
 // Models returns every model managed by the store, in dependency order.
 func Models() []any {
 	return []any{
@@ -144,5 +172,7 @@ func Models() []any {
 		&DeadLetterModel{},
 		&ExecutionLogModel{},
 		&AIAuditLogModel{},
+		&AIProviderModel{},
+		&AIModelProfile{},
 	}
 }

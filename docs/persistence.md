@@ -34,6 +34,8 @@ internal/bootstrap.Open
 | `dead_letters` | Jobs that exhausted retries |
 | `execution_log` | Execution audit log |
 | `ai_audit_log` | AI call audit log |
+| `ai_providers` | Configured AI providers (multi-provider) |
+| `ai_model_profiles` | Model routing profiles (complex, fast, cheap, auto) |
 | `schema_migrations` | Migration version control |
 
 ## Environment variables

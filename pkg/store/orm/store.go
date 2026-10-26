@@ -85,11 +85,25 @@ func (s *Store) ListProcesses(ctx context.Context) ([]*bpmn.Process, error) {
 	return result, nil
 }
 
+func (s *Store) DeleteProcess(ctx context.Context, id string) error {
+	res := s.db.WithContext(ctx).Where("id = ?", id).Delete(&ProcessModel{})
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return fmt.Errorf("process %s not found", id)
+	}
+	return nil
+}
+
 // --- Process instances ---
 
 func (s *Store) CreateInstance(ctx context.Context, inst *store.InstanceRecord) error {
 	if inst.ID == "" {
 		inst.ID = uuid.New().String()
+	}
+	if inst.TenantID == "" {
+		inst.TenantID = store.TenantFromContext(ctx)
 	}
 	if inst.StartedAt.IsZero() {
 		inst.StartedAt = time.Now()
@@ -106,6 +120,7 @@ func (s *Store) CreateInstance(ctx context.Context, inst *store.InstanceRecord) 
 		Title:       inst.Title,
 		Status:      string(inst.Status),
 		CurrentUser: inst.CurrentUser,
+		TenantID:    inst.TenantID,
 		Variables:   vars,
 		PIN:         inst.PIN,
 		StartedAt:   inst.StartedAt,
@@ -116,7 +131,11 @@ func (s *Store) CreateInstance(ctx context.Context, inst *store.InstanceRecord) 
 
 func (s *Store) GetInstance(ctx context.Context, id string) (*store.InstanceRecord, error) {
 	var m InstanceModel
-	err := s.db.WithContext(ctx).Where("id = ?", id).First(&m).Error
+	q := s.db.WithContext(ctx).Where("id = ?", id)
+	if tenant := store.TenantFromContext(ctx); tenant != "" {
+		q = q.Where("tenant_id = ? OR tenant_id = ''", tenant)
+	}
+	err := q.First(&m).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, fmt.Errorf("instance %s not found", id)
 	}
@@ -138,6 +157,7 @@ func (s *Store) UpdateInstance(ctx context.Context, inst *store.InstanceRecord) 
 			"title":        inst.Title,
 			"status":       string(inst.Status),
 			"current_user": inst.CurrentUser,
+			"tenant_id":    inst.TenantID,
 			"variables":    vars,
 			"pin":          inst.PIN,
 			"updated_at":   inst.UpdatedAt,
@@ -150,6 +170,9 @@ func (s *Store) ListInstances(ctx context.Context, status store.InstanceStatus) 
 	q := s.db.WithContext(ctx).Order("started_at DESC")
 	if status != "" {
 		q = q.Where("status = ?", string(status))
+	}
+	if tenant := store.TenantFromContext(ctx); tenant != "" {
+		q = q.Where("tenant_id = ? OR tenant_id = ''", tenant)
 	}
 	if err := q.Find(&models).Error; err != nil {
 		return nil, err
@@ -168,6 +191,7 @@ func fromInstanceModel(m *InstanceModel) *store.InstanceRecord {
 		Title:       m.Title,
 		Status:      store.InstanceStatus(m.Status),
 		CurrentUser: m.CurrentUser,
+		TenantID:    m.TenantID,
 		PIN:         m.PIN,
 		StartedAt:   m.StartedAt,
 		UpdatedAt:   m.UpdatedAt,
